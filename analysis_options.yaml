@@ -1,0 +1,22 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    - lib/ui/**
+    - lib/bloc/**
+    - lib/data/**
+    - lib/components/**
+    - lib/navigation/**
+    - lib/extensions/**
+    - lib/utils/**
+    - lib/main_legacy.dart
+    - lib/theme/ThemeColors.dart
+    - build/**
+    - android/**
+    - ios/**
+    - web/**
+
+linter:
+  rules:
+    prefer_const_constructors: false
+    use_key_in_widget_constructors: false

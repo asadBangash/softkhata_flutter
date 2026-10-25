@@ -1,0 +1,216 @@
+import 'dart:convert';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
+import 'package:soft_khata_flutter/bloc/entry/add_entry/add_entry_cubit.dart';
+import 'package:soft_khata_flutter/bloc/entry/add_entry/add_entry_state.dart';
+import 'package:soft_khata_flutter/components/loading_dialog.dart';
+import 'package:soft_khata_flutter/components/snackbar.dart';
+import 'package:soft_khata_flutter/theme/ThemeColors.dart';
+import 'package:soft_khata_flutter/ui/entry_details/entry_details_screen.dart';
+import 'package:soft_khata_flutter/utils/login_preferences.dart';
+
+class AddEntryScreen extends StatefulWidget {
+
+  var argument;
+  AddEntryScreen({this.argument});
+
+  @override
+  _AddEntryScreenState createState() => _AddEntryScreenState();
+}
+
+class _AddEntryScreenState extends State<AddEntryScreen> {
+
+  final _balanceController = TextEditingController();
+  final _desController = TextEditingController();
+  final _dateTimeController = TextEditingController();
+
+  final format = new DateFormat('yyyy-MM-dd');
+  DateTime _date = new DateTime.now();
+  TimeOfDay _time = new TimeOfDay.now();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        leading: GestureDetector(
+          onTap: () {Navigator.pop(context); },
+          child: Icon(
+            Icons.keyboard_backspace_outlined,
+            color: Theme.of(context).primaryColor,
+          ),
+        ),
+        title: Text(
+          "Add Entry",
+          style: TextStyle(
+              color: Theme.of(context).primaryColor
+          ),
+        ),
+        elevation: 1.5,
+        backgroundColor: ThemeColors.COLOR_WHITE,
+      ),
+      body: initScreen(),
+    );
+  }
+
+  Widget initScreen() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: MediaQuery.of(context).size.width,
+          height: 60,
+          margin: EdgeInsets.only(top: 30, left: 15, right: 15),
+          child: TextField(
+            cursorColor: Theme.of(context).primaryColor,
+            keyboardType: TextInputType.number,
+            controller: _balanceController,
+            maxLines: 1,
+            style: TextStyle(
+              fontWeight: FontWeight.w500,
+            ),
+            decoration: InputDecoration(
+              labelText: 'Enter Balance',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ),
+        Container(
+          width: MediaQuery.of(context).size.width,
+          height: 60,
+          margin: EdgeInsets.only(top: 20, left: 15, right: 15),
+          child: TextField(
+            cursorColor: Theme.of(context).primaryColor,
+            keyboardType: TextInputType.text,
+            controller: _desController,
+            maxLines: 1,
+            style: TextStyle(
+              fontWeight: FontWeight.w500,
+            ),
+            decoration: InputDecoration(
+              labelText: 'Enter Description',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ),
+        Container(
+          width: MediaQuery.of(context).size.width,
+          height: 60,
+          margin: EdgeInsets.only(top: 20, left: 15, right: 15),
+          child: TextField(
+            cursorColor: Theme.of(context).primaryColor,
+            keyboardType: TextInputType.text,
+            controller: _dateTimeController,
+            maxLines: 1,
+            onTap: () { _selectDateAndTime(context); },
+            style: TextStyle(
+              fontWeight: FontWeight.w500,
+            ),
+            decoration: InputDecoration(
+              labelText: 'Enter Date and Time',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ),
+        Expanded(
+          child: BlocConsumer<AddEntryCubit, AddEntryStates>(
+            listener: (_, state) {
+              if(state is AddEntrySuccess) {
+                Navigator.pop(context);
+                loading(context, false);
+              } else if(state is AddEntryError) {
+                loading(context, false);
+                errorSnackBar(context, message: state.message);
+              } else {
+                loading(context, true);
+              }
+            },
+            builder: (_, state) {
+              return SafeArea(
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Container(
+                    width: MediaQuery.of(context).size.width,
+                    margin: EdgeInsets.only(top: 15, left: 15, right: 15, bottom: 10),
+                    child: MaterialButton(
+                      onPressed: () {
+                        if(validation()) {
+                          final body = {
+                            "userId" : LoginPreferences.getUserId(),
+                            "customerId" : widget.argument["customerId"],
+                            "description" : _desController.text,
+                            "balance" : _balanceController.text,
+                            "entryType" : widget.argument["entryType"],
+                            "time" : _dateTimeController.text
+                          };
+                          context.read<AddEntryCubit>().addEntry(jsonEncode(body));
+                        }
+                      },
+                      color: Theme.of(context).primaryColor,
+                      child: Text("Add Entry",
+                        style: TextStyle(color: ThemeColors.COLOR_WHITE),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  bool validation() {
+    if(_balanceController.text.isEmpty) {
+      snackBar(context, message: "Balance should not be empty");
+      return false;
+    } else if(_desController.text.isEmpty) {
+      snackBar(context, message: "Description should not be empty");
+      return false;
+    } else if(_dateTimeController.text.isEmpty) {
+      snackBar(context, message: "Date and Time should not be empty");
+      return false;
+    } else {
+      return true;
+    }
+  }
+
+  Future<Null> _selectDate(BuildContext context) async {
+    final DateTime picked = await showDatePicker(
+      context: context,
+      initialDate: _date,
+      firstDate: new DateTime.now().subtract(Duration(days: 7)),
+      lastDate: new DateTime.now(),
+    );
+
+    if(picked != null && picked != _date) {
+      print('Date selected: ${_date.toString()}');
+      setState((){
+        _date = picked;
+      });
+    }
+  }
+
+  Future<Null> _selectTime(BuildContext context) async {
+    final TimeOfDay picked = await showTimePicker(
+      context: context,
+      initialTime: _time,
+    );
+
+    if(picked != null && picked != _time) {
+      print('Time selected: ${_time.toString()}');
+      setState(() {
+        _time = picked;
+      });
+    }
+  }
+
+  Future<Null> _selectDateAndTime(BuildContext context) async {
+    await _selectDate(context);
+    await _selectTime(context);
+    _dateTimeController.text = "${format.format(_date)}, ${_time.format(context)}";
+  }
+}

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+    width="100"
+    height="100"
+    viewBox="0 0 61 61">
+  <path
+      id="Icon_Check_Circle_Purple"
+      data-name="Icon / Check Circle / Purple"
+      d="M24,45,9,30l4.2-4.2L24,36.6,46.8,13.8,51,18ZM30,0A30,30,0,1,0,60,30,30.088,30.088,0,0,0,30,0Z"
+      transform="translate(0.5 0.5)"
+      fill="#24c23f"
+      stroke="rgba(15,184,37,0)"
+      stroke-width="1"/>
+</svg>
