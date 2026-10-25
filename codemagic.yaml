@@ -1,0 +1,135 @@
+# Codemagic CI for Soft Khata Flutter
+# Docs: https://docs.codemagic.io/yaml-quick-start/building-a-flutter-app/
+#
+# After pushing this file, open Codemagic → your app → "Check for configuration file".
+#
+# Android signing (optional): Team settings → Code signing identities → Android keystore,
+# then uncomment `android_signing` under softkhata-android-release and replace the reference name.
+#
+# iOS IPA: requires Apple Developer + certificates in Codemagic (see softkhata-ios-release workflow).
+
+workflows:
+  softkhata-android-release:
+    name: Soft Khata — Android release APK
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    environment:
+      flutter: stable
+      vars:
+        PACKAGE_NAME: "com.soft.khata.soft_khata_flutter"
+        # Override API URL at build time if needed:
+        # API_BASE_URL: "https://softkhata.skylinedelivery.ae/public/api/v1/"
+      # android_signing:
+      #   - softkhata_keystore
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+        - pattern: develop
+          include: true
+    scripts:
+      - name: Set up Android local.properties
+        script: |
+          echo "flutter.sdk=$HOME/programs/flutter" > "$CM_BUILD_DIR/android/local.properties"
+      - name: Install Flutter dependencies
+        script: |
+          flutter pub get
+      - name: Build release APK
+        script: |
+          BUILD_NAME=$(grep '^version:' pubspec.yaml | sed 's/version: //' | cut -d'+' -f1)
+          BUILD_NUMBER=$(grep '^version:' pubspec.yaml | sed 's/version: //' | cut -d'+' -f2)
+          flutter build apk --release \
+            --build-name="$BUILD_NAME" \
+            --build-number="$BUILD_NUMBER"
+            # --dart-define=API_BASE_URL="$API_BASE_URL"
+    artifacts:
+      - build/**/outputs/**/*.apk
+      - build/**/outputs/**/mapping.txt
+      - flutter_drive.log
+
+  softkhata-android-aab:
+    name: Soft Khata — Android App Bundle (Play Store)
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    environment:
+      flutter: stable
+      vars:
+        PACKAGE_NAME: "com.soft.khata.soft_khata_flutter"
+      # android_signing:
+      #   - softkhata_keystore
+    scripts:
+      - name: Set up Android local.properties
+        script: |
+          echo "flutter.sdk=$HOME/programs/flutter" > "$CM_BUILD_DIR/android/local.properties"
+      - name: Install Flutter dependencies
+        script: |
+          flutter pub get
+      - name: Build release App Bundle
+        script: |
+          BUILD_NAME=$(grep '^version:' pubspec.yaml | sed 's/version: //' | cut -d'+' -f1)
+          BUILD_NUMBER=$(grep '^version:' pubspec.yaml | sed 's/version: //' | cut -d'+' -f2)
+          flutter build appbundle --release \
+            --build-name="$BUILD_NAME" \
+            --build-number="$BUILD_NUMBER"
+    artifacts:
+      - build/**/outputs/**/*.aab
+      - build/**/outputs/**/mapping.txt
+
+  softkhata-ios-release:
+    name: Soft Khata — iOS release IPA
+    max_build_duration: 90
+    instance_type: mac_mini_m2
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+      vars:
+        APP_ID: "com.soft.khata.soft_khata_flutter"
+      # Configure in Codemagic → Code signing → iOS, then uncomment and set your reference:
+      # ios_signing:
+      #   distribution_type: app_store
+      #   bundle_identifier: com.soft.khata.soft_khata_flutter
+    scripts:
+      - name: Set up code signing settings on Xcode project
+        script: |
+          xcode-project use-profiles
+      - name: Install Flutter dependencies
+        script: |
+          flutter pub get
+      - name: Install CocoaPods
+        script: |
+          find . -name "Podfile" -execdir pod install \;
+      - name: Build IPA
+        script: |
+          BUILD_NAME=$(grep '^version:' pubspec.yaml | sed 's/version: //' | cut -d'+' -f1)
+          BUILD_NUMBER=$(grep '^version:' pubspec.yaml | sed 's/version: //' | cut -d'+' -f2)
+          flutter build ipa --release \
+            --build-name="$BUILD_NAME" \
+            --build-number="$BUILD_NUMBER"
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+
+  softkhata-ios-unsigned:
+    name: Soft Khata — iOS (unsigned, no Apple account)
+    max_build_duration: 90
+    instance_type: mac_mini_m2
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Install Flutter dependencies
+        script: |
+          flutter pub get
+      - name: Install CocoaPods
+        script: |
+          find . -name "Podfile" -execdir pod install \;
+      - name: Build iOS without code signing
+        script: |
+          flutter build ios --release --no-codesign
+    artifacts:
+      - build/ios/iphoneos/*.app
+      - /tmp/xcodebuild_logs/*.log
